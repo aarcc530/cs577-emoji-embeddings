@@ -59,9 +59,4 @@ class EmojipastaDataset(Dataset):
         return self.length
 
     def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-        # Tensor's don't like slicing
-        if isinstance(idx, slice):
-            idx = list(range(len(self))[idx])
-        return self.tensor[idx]
+        return self.tensor.unbind()[idx]
