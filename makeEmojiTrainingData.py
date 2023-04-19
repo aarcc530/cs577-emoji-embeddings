@@ -56,7 +56,11 @@ if __name__ == '__main__':
         ('::', ': :'),
     ]
 
-    for i in range(15):
+    bad_words = [
+        'cock', 'dick', 'cum', 'slut', 'fuck', 'balls'
+    ]
+
+    for i in range(10):
         res1 = requests.get("https://oauth.reddit.com/r/emojipasta/new",
                             headers=headers, params=params)
         for post in res1.json()['data']['children']:
@@ -65,8 +69,12 @@ if __name__ == '__main__':
             submission = reddit.submission(url=url)
             submission.comments.replace_more(limit=None)
             for comment in submission.comments.list():
-                comm = emoji.demojize(re.sub(':', '', comment.body)).encode('ascii', 'ignore').decode('ascii').strip()
+                comm = emoji.demojize(re.sub(':', '', comment.body)).encode('ascii', 'ignore').decode('ascii').strip().lower()
                 link = emoji.demojize(re.sub(':', '', post['data']['permalink'])).encode('ascii', 'ignore').decode('ascii').strip()
+                if 'chainlink' or 'I am a bot' in comm:
+                    continue
+                if len(comm) < 20:
+                    continue
                 for old, new in replacements:
                     comm = re.sub(old, new, comm)
                     link = re.sub(old, new, link)
@@ -86,13 +94,39 @@ if __name__ == '__main__':
                             elements += 1
                             length += 1
                     elements += 1
+                comm_list = comm.split()
+                emoji_count = 0
+                profanity_count = 0
+                for word in comm_list:
+                    if ':' in word:
+                        emoji_count += 1
+                    else:
+                        for bad_word in bad_words:
+                            if bad_word in word:
+                                print(word)
+                                profanity_count += 1
+                if profanity_count >= 5:
+                    continue
+                emoji_ratio = emoji_count / len(comm_list)
+                if emoji_ratio < 0.1 or emoji_ratio > 0.6:
+                    continue
+                for bad_word in bad_words:
+                    comm = re.sub(bad_word, '', comm)
                 c[j] = {'comment': comm,
                         'permalink': link}
             # append relevant data to dataframe
             sub = emoji.demojize(re.sub(':', '', post['data']['subreddit'])).encode('ascii', 'ignore').decode('ascii').strip()
             title = emoji.demojize(re.sub(':', '', post['data']['title'])).encode('ascii', 'ignore').decode('ascii').strip()
-            selftext = emoji.demojize(re.sub(':', '', post['data']['selftext'])).encode('ascii', 'ignore').decode('ascii').strip()
+            selftext = emoji.demojize(re.sub(':', '', post['data']['selftext'])).encode('ascii', 'ignore').decode('ascii').strip().lower()
             permalink = emoji.demojize(re.sub(':', '', post['data']['permalink'])).encode('ascii', 'ignore').decode('ascii').strip()
+            if 'chainlink' in selftext:
+                print(f'Chainlink {selftext}')
+                j = j + 1
+                continue
+            if 'request' in title:
+                print(f'request {title}')
+                j = j + 1
+                continue
             for old, new in replacements:
                 sub = re.sub(old, new, sub)
                 title = re.sub(old, new, title)
@@ -115,6 +149,31 @@ if __name__ == '__main__':
                         elements += 1
                         length += 1
                 elements += 1
+            text_list = selftext.split()
+            emoji_count = 0
+            profanity_count = 0
+            for word in text_list:
+                if ':' in word:
+                    emoji_count += 1
+                else:
+                    for bad_word in bad_words:
+                        if bad_word in word:
+                            print(word)
+                            profanity_count += 1
+            if profanity_count >= 5:
+                print(f'Profanity Count >= 5 {selftext}, Prof count = {profanity_count}')
+                j = j + 1
+                continue
+            if len(text_list) == 0:
+                j = j + 1
+                continue
+            emoji_ratio = emoji_count / len(text_list)
+            if emoji_ratio < 0.1 or emoji_ratio > 0.6:
+                print(f'Emoji Ratio is out of bounds {selftext} emoji ratio = {emoji_ratio}')
+                j = j + 1
+                continue
+            for bad_word in bad_words:
+                selftext = re.sub(bad_word, '', selftext)
             d[j] = {
                 'subreddit': sub,
                 'title': title,
@@ -128,5 +187,8 @@ if __name__ == '__main__':
 
     df = pd.DataFrame.from_dict(d, orient='index', columns=['subreddit', 'title', 'selftext', 'permalink'])
     all_comments = pd.DataFrame.from_dict(c, orient='index', columns=['comment', 'permalink'])
+
     df.to_csv('Posts.csv')
     all_comments.to_csv('Comments.csv')
+
+    print(df.shape)
