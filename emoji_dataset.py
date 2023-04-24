@@ -6,20 +6,17 @@ from torch.utils.data import Dataset
 
 
 class EmojipastaDataset(Dataset):
-
-
-
     def __init__(self, dataloc):
         self.dict_index = 1
+        self.emoji_index = 1
         self.word2index = { ".": 0 }
-        self.index_is_emoji = { 0: False }
         input = pd.read_csv(dataloc, index_col=0)
         input['tensor'] = [torch.tensor(self.split_words(sent)) for sent in input['selftext']]
 
         self.tensor = torch.nested.nested_tensor(list(input['tensor'].values))
         
         self.length = len(input['tensor'])
-
+    
 
     def split_words(self, input):
         words = []
@@ -44,17 +41,19 @@ class EmojipastaDataset(Dataset):
             if word in self.word2index.keys():
                 words.append(self.word2index[word])
             else:
-                self.word2index[word] = self.dict_index
-                self.index_is_emoji[self.dict_index] = is_emoji
-                words.append(self.dict_index)
-                self.dict_index += 1
+                if is_emoji:
+                    self.word2index[word] = -self.emoji_index
+                    words.append(-self.emoji_index)
+                    self.emoji_index += 1
+                else:
+                    self.word2index[word] = self.dict_index
+                    words.append(self.dict_index)
+                    self.dict_index += 1
 
             if add_period:
                 words.append(0)
         return words
             
-    
-
     def __len__(self):
         return self.length
 
