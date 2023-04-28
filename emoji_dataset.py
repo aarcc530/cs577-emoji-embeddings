@@ -6,16 +6,29 @@ from torch.utils.data import Dataset
 
 
 class EmojipastaDataset(Dataset):
-    def __init__(self, dataloc):
+    def __init__(self, dataloc, window_size=4, device=torch.device( 'cuda' if torch.cuda.is_available() else 'cpu')):
         self.dict_index = 1
         self.emoji_index = 1
+        self.window_size = window_size
         self.word2index = { ".": 0 }
         input = pd.read_csv(dataloc, index_col=0)
-        input['tensor'] = [torch.tensor(self.split_words(sent)) for sent in input['selftext']]
 
-        self.tensor = torch.nested.nested_tensor(list(input['tensor'].values))
+        posts = [self.split_words(sent) for sent in input['selftext']]
+
+        windows = []
+        side_len = self.window_size//2
+        for post in posts:
+            for i in range(side_len, len(post)-(side_len)):
+                window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
+                windows.append(window)
+
+
+        tensors = [torch.tensor(window) for window in windows]
+        #input['tensor'] = [torch.tensor(self.split_words(sent)) for sent in input['selftext']]
+
+        self.tensor = torch.stack(tensors).to(device)
         
-        self.length = len(input['tensor'])
+        self.length = len(tensors)
     
 
     def split_words(self, input):
@@ -58,4 +71,4 @@ class EmojipastaDataset(Dataset):
         return self.length
 
     def __getitem__(self, idx):
-        return self.tensor.unbind()[idx]
+        return self.tensor[idx]
