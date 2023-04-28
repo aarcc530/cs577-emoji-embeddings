@@ -16,17 +16,21 @@ class EmojipastaDataset(Dataset):
         posts = [self.split_words(sent) for sent in input['selftext']]
 
         windows = []
+        words = []
         side_len = self.window_size//2
         for post in posts:
             for i in range(side_len, len(post)-(side_len)):
                 window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
+                words.append(post[i])
                 windows.append(window)
 
 
         tensors = [torch.tensor(window) for window in windows]
+        self.words = torch.tensor(words)
         #input['tensor'] = [torch.tensor(self.split_words(sent)) for sent in input['selftext']]
 
         self.tensor = torch.stack(tensors).to(device)
+        self.words = torch.tensor(words)
         
         self.length = len(tensors)
     
@@ -72,3 +76,6 @@ class EmojipastaDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.tensor[idx]
+    
+    def getWord(self, idx):
+        return self.words[idx]
