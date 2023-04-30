@@ -6,12 +6,13 @@ from torch.utils.data import Dataset
 
 
 class CBOWDataset(Dataset):
-    def __init__(self, dataloc, window_size=4, device=torch.device('cpu')):
+    def __init__(self, dataloc, window_size=4, device=torch.device('cpu'), emoji_windows_only=True):
         self.dict_index = 1
         self.emoji_index = 1
         self.device = device
         self.window_size = window_size
         self.word2index = { ".": 0 }
+        self.emoji_windows_only = emoji_windows_only
         input = pd.read_csv(dataloc, index_col=0)
 
         posts = [self.split_words(sent) for sent in input['selftext']]
@@ -21,9 +22,10 @@ class CBOWDataset(Dataset):
         side_len = self.window_size//2
         for post in posts:
             for i in range(side_len, len(post)-(side_len)):
-                window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
-                words.append(post[i])
-                windows.append(window)
+                if (not emoji_windows_only or post[i] < 0):
+                    window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
+                    words.append(post[i])
+                    windows.append(window)
 
 
         tensors = [torch.tensor(window) for window in windows]
@@ -84,6 +86,8 @@ class CBOWDataset(Dataset):
     
     def getWordPos(self, idx):
         res = self.words[idx]
+        if self.emoji_windows_only:
+            return (-1 *  res) - 1
         res2 = (self.dict_index + self.emoji_index - 1) * torch.ones_like(res) + res
         return torch.where(res < 0, res2, res)
     

@@ -33,7 +33,7 @@ else:
 
 
 if args.model == 'cbow':
-    dataset = CBOWDataset(args.filename, window_size=window, device=gpu)
+    dataset = CBOWDataset(args.filename, window_size=window, device=gpu, emoji_windows_only=True)
 elif args.model == 'skipgram':
     dataset = SkipgramDataset(args.filename, window_size=window, device=gpu)
     assert(False)
@@ -71,7 +71,7 @@ else:
 
 
 if args.model == 'cbow':
-    model = CBOW(dataset.dict_index, dataset.emoji_index, window=window, emb_dim=emb_dim, word_embeddings=word_weights, hidden_size=args.hiddenSize).to(gpu)
+    model = CBOW(dataset.dict_index, dataset.emoji_index, window=window, emb_dim=emb_dim, word_embeddings=word_weights, hidden_size=args.hiddenSize, emoji_windows_only=True).to(gpu)
 elif args.model == 'skipgram':
     print('Not Implemented Yet')
     assert(False)
@@ -81,15 +81,17 @@ full_sail = False
 testing = True
 
 # This was my evaluation function so I could leave it running over night to do parts of it
-max_iter = 20
-learn_rate = 0.001
+max_iter = 10000
+learn_rate = 1
 batch_size = 4
 optimizer = torch.optim.SGD(model.parameters(), lr=learn_rate)
 #criterion = torch.nn.MSELoss()
 criterion = torch.nn.NLLLoss()
 
+
 data_len = len(dataset)
-batch_count = (len(dataset) -1) // batch_size + 1
+#data_len = 4
+batch_count = (data_len -1) // batch_size + 1
 
 print("Starting Training")
 for i in range(1, max_iter + 1):
@@ -121,14 +123,16 @@ for i in range(1, max_iter + 1):
             correct = torch.where(preds == actual, 1, 0)
             correct_list.append( torch.sum(correct).item())
         print("Iteration:", i, "Accuracy:", sum(correct_list) / data_len)
-    else: 
-        preds = model.predict(model(dataset[batch_start:batch_end]))
-        actual = dataset.getWord(slice(batch_start, batch_end))
+    else:
+        res = model(dataset[0:data_len])
+        preds = model.predict(res)
+        actual = dataset.getWord(slice(0, data_len))
         #actual2 = dataset.getOneHot(slice(batch_start, batch_end, None)).to(gpu)
-        actual2 = dataset.getWordPos(slice(batch_start, batch_end, None))
-        loss = criterion(pred, actual2)
+        actual2 = dataset.getWordPos(slice(0, data_len))
+        loss = criterion(res, actual2)
         correct = torch.where(preds == actual, 1, 0)
-        print("Iteration:", i, "Accuracy:", torch.sum(correct).item() / data_len, "Loss:", loss.item())
+        if i % 4 == 0:
+            print("Iteration:", i, "Accuracy:", torch.sum(correct).item() / data_len, "Loss:", loss.item())
     model.train()
 
 

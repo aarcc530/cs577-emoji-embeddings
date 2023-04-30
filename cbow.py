@@ -2,11 +2,12 @@ from torch import nn
 import torch
 
 class CBOW(nn.Module):
-    def __init__(self, word_len, emoji_len, word_embeddings=None, freeze_pretrained_words=True, emb_dim=50, window=4, hidden_size=10):
+    def __init__(self, word_len, emoji_len, word_embeddings=None, freeze_pretrained_words=True, emb_dim=50, window=4, hidden_size=10, emoji_windows_only=True):
         super(CBOW, self).__init__()
 
         self.word_len = word_len
         self.emoji_len = emoji_len
+        self.emoji_windows_only = emoji_windows_only
 
         if word_embeddings is None:
             assert(emb_dim > 0)
@@ -32,14 +33,23 @@ class CBOW(nn.Module):
 
         assert(window > 0)
         self.window = window
-
-        self.learning_layers = nn.Sequential(
-            nn.Linear(self.emb_dim * self.window, hidden_size),
-            nn.Tanh(),
-            nn.Dropout(),
-            nn.Linear(hidden_size, word_len + emoji_len - 1),
-            nn.Softmax(dim=1)
-        )
+        if emoji_windows_only:
+            self.learning_layers = nn.Sequential(
+                nn.Linear(self.emb_dim * self.window, hidden_size),
+                nn.Tanh(),
+                nn.Dropout(),
+                nn.Linear(hidden_size, emoji_len - 1),
+#                nn.Linear(self.emb_dim * self.window, emoji_len - 1),
+                nn.Softmax(dim=1)
+            )
+        else:
+            self.learning_layers = nn.Sequential(
+                nn.Linear(self.emb_dim * self.window, hidden_size),
+                nn.Tanh(),
+                nn.Dropout(),
+                nn.Linear(hidden_size, word_len + emoji_len - 1),
+                nn.Softmax(dim=1)
+            )
 
     def forward(self, X: torch.Tensor):
         # Assuming this is data loaded
@@ -62,5 +72,8 @@ class CBOW(nn.Module):
             results = torch.argmax(X)
         else:
             results = torch.argmax(X, dim=1)
-        results2 = results - ((self.word_len + self.emoji_len - 1) * torch.ones_like(results))
-        return torch.where(results >= self.word_len, results2, results)
+        if self.emoji_windows_only:
+            return (-1 * results) - torch.ones_like(results)
+        else:
+            results2 = results - ((self.word_len + self.emoji_len - 1) * torch.ones_like(results))
+            return torch.where(results >= self.word_len, results2, results)
