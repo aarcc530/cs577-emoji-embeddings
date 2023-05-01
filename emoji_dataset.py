@@ -22,8 +22,15 @@ class CBOWDataset(Dataset):
         side_len = self.window_size//2
         for post in posts:
             for i in range(side_len, len(post)-(side_len)):
-                if (not emoji_windows_only or post[i] < 0):
-                    window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
+                window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
+                if (not emoji_windows_only):
+                    for j in range(2 *side_len):
+                        if window[j] < 0:
+                            words.append(post[i])
+                            windows.append(window)
+                            break
+                    
+                else:
                     words.append(post[i])
                     windows.append(window)
 
@@ -86,8 +93,6 @@ class CBOWDataset(Dataset):
     
     def getWordPos(self, idx):
         res = self.words[idx]
-        if self.emoji_windows_only:
-            return (-1 *  res) - 1
         res2 = (self.dict_index + self.emoji_index - 1) * torch.ones_like(res) + res
         return torch.where(res < 0, res2, res)
     
