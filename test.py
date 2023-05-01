@@ -21,7 +21,7 @@ parser.add_argument('-E', '--embeddings', choices=['glove', 'word2vec', 'none'],
 parser.add_argument('-e', '--emoji2vec', default=False)
 parser.add_argument('-d', '--hiddenSize', default=20)
 parser.add_argument('-g', '--gpu', default=False)
-parser.add_argument('-l', '--learningrate', default=10)
+parser.add_argument('-l', '--learningrate', default=1)
 
 args = parser.parse_args()
 
@@ -109,6 +109,7 @@ for i in range(1, max_iter + 1):
         loss.backward()
         optimizer.step()
     model.eval()
+    criterion.eval()
     correct_list = []
     loss_list = []
     split = 4
@@ -127,6 +128,7 @@ for i in range(1, max_iter + 1):
         loss_list.append(criterion(res, actual2).item() * (batch_end - batch_start))
         correct_list.append(torch.sum(correct).item())
     print("Iteration:", i, "Accuracy:", sum(correct_list) / data_len, "Loss:", sum(loss_list) / data_len)
+    criterion.train()
     model.train()
 
 
