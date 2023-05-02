@@ -62,8 +62,8 @@ else:
 word_weights = None
 if not word_model is None:
     word_list = []
-    for i in range(dataset.dict_index):
-        word = dataset.index2word[i]
+    word_dict = dataset.word2index
+    for word in word_dict.keys():
         if word in word_model:
             word_list.append(torch.tensor(word_model[word]))
         else:
@@ -72,27 +72,12 @@ if not word_model is None:
 
 
 # Load Emoji2Vec is neccessary (WIP)
-
-
 if args.emoji2vec:
     #assert(emb_dim == 50)
     em_model = gensim.models.KeyedVectors.load_word2vec_format('preTrainedEmoji2Vec.txt', binary=False)
     emoji_weights = torch.FloatTensor(em_model.vectors)
 else:
-    emoji_model = None
-
-
-emoji_weights = None
-if not emoji_model is None:
-    emoji_list = []
-    for i in range(dataset.emoji_index):
-        emoji = dataset.index2word[-i]
-        if emoji in emoji_model:
-            emoji_list.append(torch.tensor(word_model[word]))
-        else:
-            emoji_list.append(torch.zeros(emb_dim))
-    emoji_weights = torch.stack(emoji_list)
-
+    emoji_weights = None
 
 # Setup Model (Skipgram WIP)
 if args.model == 'cbow':
@@ -105,10 +90,7 @@ elif args.model == 'ngram':
 
 
 # Setup optimizer
-if emoji_weights == None:
-    max_iter = 100 #For slow start, no point going above this
-else:
-    max_iter = 1000
+max_iter = 10000
 learn_rate = args.learningrate
 batch_size = 4
 optimizer = torch.optim.SGD(model.parameters(), lr=learn_rate)
@@ -162,26 +144,4 @@ for i in range(1, max_iter + 1):
     criterion.train()
     model.train()
 
-output_location = './results/'
-
-(acc_fig, acc_ax) = plt.subplots()
-acc_ax.set(xlabel='Epochs', ylabel='Accuracy', title='Accuracy Over Epochs for ' + args.model)
-acc_ax.plot(accuracies)
-acc_fig.savefig(output_location + 'accuracy-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + '.png')
-
-(loss_fig, loss_ax) = plt.subplots()
-loss_ax.set(xlabel='Epochs', ylabel='Loss', title='Loss Over Epochs for ' + args.model)
-loss_ax.plot(losses)
-loss_fig.savefig(output_location + 'loss-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + '.png')
-
-pairs = []
-for emoji in range(-dataset.emoji_index + 1, 1):
-    pairs.append((dataset.index2word[emoji], model.get_word_embeddings(torch.tensor(emoji).to(gpu)).tolist()))
-
-
-results = pd.DataFrame.from_records(pairs, columns=['Emoji', 'Embedding'])
-results.to_csv(output_location + 'emoji-embeddings-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + '.csv', index=False)
-
-
 print("done")
-
