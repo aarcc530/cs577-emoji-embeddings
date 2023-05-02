@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from cbow import CBOW
-from emoji_dataset import CBOWDataset, SkipgramDataset
+from emoji_dataset import CBOWDataset#, SkipgramDataset
 import argparse
 import gensim
 import gensim.downloader as api
@@ -32,32 +32,39 @@ if args.gpu:
 else:
     gpu = torch.device('cpu')
 
-# Determine the Dataset
-if args.model == 'cbow':
-    dataset = CBOWDataset(args.filename, window_size=window, device=gpu, emoji_windows_only=True)
-elif args.model == 'skipgram':
-    dataset = SkipgramDataset(args.filename, window_size=window, device=gpu)
-    assert(False)
-
-
-
 # Load Embeddings
 word_model = None
 if args.embeddings == 'word2vec':
     word_model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin')
-    emb_dim = 300
+    emb_dim = len(word_model.vectors[0])
+    assert(emb_dim == 300)
 elif args.embeddings == 'glove':
     assert(word_model is None)
     word_model = api.load("glove-wiki-gigaword-50")
-    emb_dim = 50
+    emb_dim = len(word_model.vectors[0])
 else:
     assert(word_model is None)
     emb_dim = 50
 
 
+# Load Emoji2Vec is neccessary (WIP)
+emoji_model = gensim.models.KeyedVectors.load_word2vec_format('./preTrainedEmoji2Vec.txt', binary=False)
+if args.emoji2vec:   
+    assert(emb_dim == len(emoji_model.vectors[0]))
+
+
+
+# Determine the Dataset
+if args.model == 'cbow':
+    dataset = CBOWDataset(args.filename, window_size=window, device=gpu, emoji_windows_only=True, word_embeddings=word_model, emoji_embeddings=emoji_model)
+elif args.model == 'skipgram':
+    #dataset = SkipgramDataset(args.filename, window_size=window, device=gpu)
+    assert(False)
+
+
 # Set up the Correct Loaded Embeddings
 word_weights = None
-if not word_model is None:
+if not word_weights is None:
     word_list = []
     for i in range(dataset.dict_index):
         word = dataset.index2word[i]
@@ -67,15 +74,8 @@ if not word_model is None:
             word_list.append(torch.zeros(emb_dim))
     word_weights = torch.stack(word_list)
 
-
-# Load Emoji2Vec is neccessary (WIP)
-if args.emoji2vec:   
-    emoji_model = gensim.models.KeyedVectors.load_word2vec_format('./preTrainedEmoji2Vec.txt', binary=False)
-else:
-    emoji_model = None
-
 emoji_weights = None
-if not emoji_model is None:
+if args.emoji2vec:
     emoji_list = []
     for i in range(dataset.emoji_index):
         emoji = dataset.index2word[-i]
@@ -96,7 +96,7 @@ elif args.model == 'skipgram':
 
 # Setup optimizer
 if emoji_weights == None:
-    max_iter = 100 #For slow start, no point going above this
+    max_iter = 500 #For slow start, no point going above this
 else:
     max_iter = 1000
 learn_rate = args.learningrate

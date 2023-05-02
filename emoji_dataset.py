@@ -5,14 +5,20 @@ import string
 from torch.utils.data import Dataset
 
 
+
+
 class CBOWDataset(Dataset):
-    def __init__(self, dataloc, window_size=4, device=torch.device('cpu'), emoji_windows_only=True):
+    def __init__(self, dataloc, window_size=4, device=torch.device('cpu'), emoji_windows_only=True, word_embeddings=None, emoji_embeddings=None):
+        self.EMOJI_NOT_FOUND = -2**30
+
         self.dict_index = 1
         self.emoji_index = 1
         self.device = device
         self.window_size = window_size
         self.word2index = { ".": 0 }
         self.index2word = { 0: "." }
+        self.emoji_embeddings = emoji_embeddings
+        self.word_embeddings = word_embeddings
         self.emoji_windows_only = emoji_windows_only
         input = pd.read_csv(dataloc, index_col=0)
 
@@ -24,14 +30,15 @@ class CBOWDataset(Dataset):
         for post in posts:
             for i in range(side_len, len(post)-(side_len)):
                 window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
-                if (not emoji_windows_only):
-                    for j in range(2 *side_len):
-                        if window[j] < 0:
-                            words.append(post[i])
-                            windows.append(window)
-                            break
-                    
-                else:
+                include_window = True
+                contains_emojis = False
+                for j in range(2 *side_len):
+                    if window[j] == self.EMOJI_NOT_FOUND:
+                        include_window = False
+                        break
+                    if window[j] < 0:
+                        contains_emojis = True
+                if include_window and (not emoji_windows_only or contains_emojis):
                     words.append(post[i])
                     windows.append(window)
 
@@ -48,7 +55,7 @@ class CBOWDataset(Dataset):
 
     def split_words(self, input):
         words = []
-        for word in input.lower().split():
+        for word in input.split():
             if word == '':
                 continue
             
@@ -65,11 +72,15 @@ class CBOWDataset(Dataset):
                     break
             if word == '':
                 continue
+            if not is_emoji:
+                word = word.lower()
             #Append word and add to dict if necessary
             if word in self.word2index.keys():
                 words.append(self.word2index[word])
             else:
                 if is_emoji:
+                    if word not in self.emoji_embeddings:
+                        words.append(self.EMOJI_NOT_FOUND)
                     self.word2index[word] = -self.emoji_index
                     self.index2word[-self.emoji_index] = word
                     words.append(-self.emoji_index)
@@ -79,7 +90,6 @@ class CBOWDataset(Dataset):
                     self.index2word[self.dict_index] = word
                     words.append(self.dict_index)
                     self.dict_index += 1
-
             if add_period:
                 words.append(0)
         return words
@@ -117,142 +127,78 @@ class CBOWDataset(Dataset):
 
    #return skip_grams
 
-class SkipgramDataset(Dataset):
-    def __init__(self, dataloc, window_size=4, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
-        self.dict_index = 1
-        self.emoji_index = 1
-        self.window_size = window_size
-        self.word2index = { ".": 0 }
-        input = pd.read_csv(dataloc, index_col=0)
-
-        posts = [self.split_words(sent) for sent in input['selftext']]
-
-        windows = []
-        words = []
-        side_len = self.window_size//2
-        for post in posts:
-            for i in range(side_len, len(post)-(side_len)):
-                window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
-                words.append(post[i])
-                windows.append(window)
-
-
-        tensors = [torch.tensor(window) for window in windows]
-        self.words = torch.tensor(words)
-        #input['tensor'] = [torch.tensor(self.split_words(sent)) for sent in input['selftext']]
-
-        self.context = torch.stack(tensors).to(device)
-        self.words = torch.tensor(words).to(device)
-        
-        self.length = len(tensors)
-    
-
-    def split_words(self, input):
-        words = []
-        for word in input.lower().split():
-            if word == '':
-                continue
-            
-            #Is it an emoji?
-            is_emoji = (word[0] == ':')
-
-            #Remove punctuation, but mark that there was puncuation end of sentence
-            add_period = False
-            while not (is_emoji and word[-1] != ':') and  word[-1] in string.punctuation:
-                if word[-1] == '.':
-                    add_period = True
-                word = word[:-1]
-                if word == '':
-                    break
-            if word == '':
-                continue
-            #Append word and add to dict if necessary
-            if word in self.word2index.keys():
-                words.append(self.word2index[word])
-            else:
-                if is_emoji:
-                    self.word2index[word] = -self.emoji_index
-                    words.append(-self.emoji_index)
-                    self.emoji_index += 1
-                else:
-                    self.word2index[word] = self.dict_index
-                    words.append(self.dict_index)
-                    self.dict_index += 1
-
-            if add_period:
-                words.append(0)
-        return words
-        
-            
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, idx):
-        return self.words[idx]
-    
-    def getContext(self, idx):
-        return self.context[idx]
+#class SkipgramDataset(Dataset):
+#    def __init__(self, dataloc, window_size=4, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+#        self.dict_index = 1
+#        self.emoji_index = 1
+#        self.window_size = window_size
+#        self.word2index = { ".": 0 }
+#        input = pd.read_csv(dataloc, index_col=0)
 #
-    #def __init__(self, dataloc, window_size=4, device=torch.device( 'cuda' if torch.cuda.is_available() else 'cpu')):
-    #    self.dict_index = 1
-    #    self.emoji_index = 1
-    #    self.window_size = window_size
-    #    self.word2index = { ".": 0 }
-    #    input = pd.read_csv(dataloc, index_col=0)
+#        posts = [self.split_words(sent) for sent in input['selftext']]
 #
-    #    posts = [self.split_words(sent) for sent in input['selftext']]
+#        windows = []
+#        words = []
+#        side_len = self.window_size//2
+#        for post in posts:
+#            for i in range(side_len, len(post)-(side_len)):
+#                window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
+#                words.append(post[i])
+#                windows.append(window)
 #
-    #    skip_grams = []
-    #    for post in posts:
-    #        for i in range(window_size, len(post) - window_size):
-    #            target = post[i]
-    #            context = [post[i - window_size], post[i + window_size]]
-    #            for w in context:
-    #                skip_grams.append([target, w])
 #
-    #    pass
+#        tensors = [torch.tensor(window) for window in windows]
+#        self.words = torch.tensor(words)
+#        #input['tensor'] = [torch.tensor(self.split_words(sent)) for sent in input['selftext']]
 #
-    #def split_words(self, input):
-    #    words = []
-    #    for word in input.lower().split():
-    #        if word == '':
-    #            continue
-    #        
-    #        #Is it an emoji?
-    #        is_emoji = (word[0] == ':')
+#        self.context = torch.stack(tensors).to(device)
+#        self.words = torch.tensor(words).to(device)
+#        
+#        self.length = len(tensors)
+#    
 #
-    #        #Remove punctuation, but mark that there was puncuation end of sentence
-    #        add_period = False
-    #        while not (is_emoji and word[-1] != ':') and  word[-1] in string.punctuation:
-    #            if word[-1] == '.':
-    #                add_period = True
-    #            word = word[:-1]
-    #            if word == '':
-    #                break
-    #        if word == '':
-    #            continue
-    #        #Append word and add to dict if necessary
-    #        if word in self.word2index.keys():
-    #            words.append(self.word2index[word])
-    #        else:
-    #            if is_emoji:
-    #                self.word2index[word] = -self.emoji_index
-    #                words.append(-self.emoji_index)
-    #                self.emoji_index += 1
-    #            else:
-    #                self.word2index[word] = self.dict_index
-    #                words.append(self.dict_index)
-    #                self.dict_index += 1
+#    def split_words(self, input):
+#        words = []
+#        for word in input.lower().split():
+#            if word == '':
+#                continue
+#            
+#            #Is it an emoji?
+#            is_emoji = (word[0] == ':')
 #
-    #        if add_period:
-    #            words.append(0)
-    #    return words
-    #
-    #def __len__(self):
-    #    return self.length
+#            #Remove punctuation, but mark that there was puncuation end of sentence
+#            add_period = False
+#            while not (is_emoji and word[-1] != ':') and  word[-1] in string.punctuation:
+#                if word[-1] == '.':
+#                    add_period = True
+#                word = word[:-1]
+#                if word == '':
+#                    break
+#            if word == '':
+#                continue
+#            #Append word and add to dict if necessary
+#            if word in self.word2index.keys():
+#                words.append(self.word2index[word])
+#            else:
+#                if is_emoji:
+#                    self.word2index[word] = -self.emoji_index
+#                    words.append(-self.emoji_index)
+#                    self.emoji_index += 1
+#                else:
+#                    self.word2index[word] = self.dict_index
+#                    words.append(self.dict_index)
+#                    self.dict_index += 1
 #
-    #def __getitem__(self, idx):
-    #    return self.tensor[idx]
-    #
-    #def getWord(self, idx):
-    #    return self.words[idx]
+#            if add_period:
+#                words.append(0)
+#        return words
+#        
+#            
+#    def __len__(self):
+#        return self.length
+#
+#    def __getitem__(self, idx):
+#        return self.words[idx]
+#    
+#    def getContext(self, idx):
+#        return self.context[idx]
