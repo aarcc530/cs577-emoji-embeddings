@@ -85,7 +85,7 @@ elif args.model == 'skipgram':
 
 
 # Setup optimizer
-max_iter = 1000
+max_iter = 2500
 learn_rate = args.learningrate
 batch_size = 16
 optimizer = torch.optim.SGD(model.parameters(), lr=learn_rate)
