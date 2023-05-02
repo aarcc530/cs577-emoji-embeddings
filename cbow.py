@@ -2,35 +2,36 @@ from torch import nn
 import torch
 
 class CBOW(nn.Module):
-    def __init__(self, word_len, emoji_len, word_embeddings=None, freeze_pretrained_words=True, emb_dim=50, window=4, hidden_size=10):
+    def __init__(self, word_len, emoji_len, word_embeddings=None, freeze_pretrained_words=True, emb_dim=50, window=4):
         super(CBOW, self).__init__()
 
         self.word_len = word_len
         self.emoji_len = emoji_len
 
+
         # Create/Load Word Emebeddings, zeroing out the 0/period
         if word_embeddings is None:
             assert(emb_dim > 0)
             self.emb_dim = emb_dim
-
             self.word_embeddings = nn.Embedding(word_len, self.emb_dim)
-            temp_state = self.word_embeddings.state_dict()
-            temp_state['weight'][0] = torch.zeros(self.emb_dim)
-            self.word_embeddings.load_state_dict(temp_state)
+            self.word_embeddings.weight.data.uniform_(-1, 1)
+            with torch.no_grad():
+                self.word_embeddings.weight.data[0] = torch.zeros(self.emb_dim)
+                self.word_embeddings.weight[0] = self.word_embeddings.weight[0].detach()
         else:
             self.emb_dim = len(word_embeddings[0])
             self.word_len - len(word_embeddings)
 
             self.word_embeddings =  nn.Embedding.from_pretrained(word_embeddings, freeze=freeze_pretrained_words)
-            temp_state = self.word_embeddings.state_dict()
-            temp_state['weight'][0] = torch.zeros(self.emb_dim)
-            self.word_embeddings.load_state_dict(temp_state)
+            self.word_embeddings.weight[0] = torch.zeros(self.emb_dim)
+
 
         # Create Emoji Embeddings, zeroing out 0/the period
-        self.emoji_embeddings = nn.Embedding(emoji_len, self.emb_dim, sparse=True)
-        temp_state2 = self.emoji_embeddings.state_dict()
-        temp_state2['weight'][0] = torch.zeros(self.emb_dim)
-        self.emoji_embeddings.load_state_dict(temp_state2)
+        self.emoji_embeddings = nn.Embedding(emoji_len, self.emb_dim)
+        self.emoji_embeddings.weight.data.uniform_(-1, 1)
+        with torch.no_grad():
+            self.emoji_embeddings.weight.data[0] = torch.zeros(self.emb_dim)
+            self.emoji_embeddings.weight[0] = self.emoji_embeddings.weight[0].detach()
 
         assert(window > 0)
         self.window = window
@@ -65,10 +66,13 @@ class CBOW(nn.Module):
         return out2
     
     # Allows retrieval of embeddings
-    def get_word_embeddings(self, words):
-        emojis = self.emoji_embeddings(words)
-        words = self.word_embeddings(words)
-        return torch.where(words < 0, emojis, words)
+    def get_word_embeddings(self, X):
+        zeroes = torch.zeros_like(X)
+        zeroed_out_emojis = torch.where(X < 0, zeroes, X)
+        zeroed_out_words = torch.where(X < 0, torch.negative(X), zeroes)
+        words = self.word_embeddings(zeroed_out_emojis)
+        emojis = self.emoji_embeddings(zeroed_out_words)
+        return torch.add(words, emojis)
     
 
     # Converts probabilities into predictions
@@ -82,7 +86,7 @@ class CBOW(nn.Module):
     
 
 class SkipGram(nn.Module):
-    def __init__(self, word_len, emoji_len, word_embeddings=None, freeze_pretrained_words=True, emb_dim=50, window=4, hidden_size=10):
+    def __init__(self, word_len, emoji_len, word_embeddings=None, freeze_pretrained_words=True, emb_dim=50, window=4):
         super(CBOW, self).__init__()
 
         self.word_len = word_len
@@ -94,24 +98,25 @@ class SkipGram(nn.Module):
             assert(emb_dim > 0)
             self.emb_dim = emb_dim
             self.word_embeddings = nn.Embedding(word_len, self.emb_dim)
-            temp_state = self.word_embeddings.state_dict()
-            temp_state['weight'][0] = torch.zeros(self.emb_dim)
-            self.word_embeddings.load_state_dict(temp_state)
+            self.word_embeddings.weight.data.uniform_(-1, 1)
+            with torch.no_grad():
+                self.word_embeddings.weight.data[0] = torch.zeros(self.emb_dim)
+                self.word_embeddings.weight[0] = self.word_embeddings.weight[0].detach()
         else:
             self.emb_dim = len(word_embeddings[0])
             self.word_len - len(word_embeddings)
 
             self.word_embeddings =  nn.Embedding.from_pretrained(word_embeddings, freeze=freeze_pretrained_words)
-            temp_state = self.word_embeddings.state_dict()
-            temp_state['weight'][0] = torch.zeros(self.emb_dim)
-            self.word_embeddings.load_state_dict(temp_state)
+            self.word_embeddings.weight[0] = torch.zeros(self.emb_dim)
 
 
         # Create Emoji Embeddings, zeroing out 0/the period
         self.emoji_embeddings = nn.Embedding(emoji_len, self.emb_dim)
-        temp_state2 = self.emoji_embeddings.state_dict()
-        temp_state2['weight'][0] = torch.zeros(self.emb_dim)
-        self.emoji_embeddings.load_state_dict(temp_state2)
+        self.emoji_embeddings.weight.data.uniform_(-1, 1)
+        with torch.no_grad():
+            self.emoji_embeddings.weight.data[0] = torch.zeros(self.emb_dim)
+            self.emoji_embeddings.weight[0] = self.emoji_embeddings.weight[0].detach()
+
 
 
         # As far as I can tell, Skipgram is word -> embedding -> different layers for different context words
@@ -139,10 +144,13 @@ class SkipGram(nn.Module):
         return out2
     
     # Allows retrieval of embeddings
-    def get_word_embeddings(self, words):
-        emojis = self.emoji_embeddings(words)
-        words = self.word_embeddings(words)
-        return torch.where(words < 0, emojis, words)
+    def get_word_embeddings(self, X):
+        zeroes = torch.zeros_like(X)
+        zeroed_out_emojis = torch.where(X < 0, zeroes, X)
+        zeroed_out_words = torch.where(X < 0, torch.negative(X), zeroes)
+        words = self.word_embeddings(zeroed_out_emojis)
+        emojis = self.emoji_embeddings(zeroed_out_words)
+        return torch.add(words, emojis)
     
     # Converts probabilities into predictions
     def predict(self, X: torch.tensor):

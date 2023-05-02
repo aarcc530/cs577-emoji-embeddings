@@ -12,6 +12,7 @@ class CBOWDataset(Dataset):
         self.device = device
         self.window_size = window_size
         self.word2index = { ".": 0 }
+        self.index2word = { 0: "." }
         self.emoji_windows_only = emoji_windows_only
         input = pd.read_csv(dataloc, index_col=0)
 
@@ -56,7 +57,7 @@ class CBOWDataset(Dataset):
 
             #Remove punctuation, but mark that there was puncuation end of sentence
             add_period = False
-            while not (is_emoji and word[-1] != ':') and  word[-1] in string.punctuation:
+            while not (is_emoji and word[-1] == ':') and  word[-1] in string.punctuation:
                 if word[-1] == '.':
                     add_period = True
                 word = word[:-1]
@@ -70,10 +71,12 @@ class CBOWDataset(Dataset):
             else:
                 if is_emoji:
                     self.word2index[word] = -self.emoji_index
+                    self.index2word[-self.emoji_index] = word
                     words.append(-self.emoji_index)
                     self.emoji_index += 1
                 else:
                     self.word2index[word] = self.dict_index
+                    self.word2index[self.dict_index] = word
                     words.append(self.dict_index)
                     self.dict_index += 1
 
