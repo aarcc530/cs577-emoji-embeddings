@@ -80,7 +80,7 @@ if args.emoji2vec:
     for i in range(dataset.emoji_index):
         emoji = dataset.index2word[-i]
         if emoji in emoji_model:
-            emoji_list.append(torch.tensor(word_model[word]))
+            emoji_list.append(torch.tensor(emoji_model[emoji]))
         else:
             emoji_list.append(torch.zeros(emb_dim))
     emoji_weights = torch.stack(emoji_list)
@@ -88,17 +88,18 @@ if args.emoji2vec:
 
 # Setup Model (Skipgram WIP)
 if args.model == 'cbow':
-    model = CBOW(dataset.dict_index, dataset.emoji_index, window=window, emb_dim=emb_dim, word_embeddings=word_weights).to(gpu)
+    model = CBOW(dataset.dict_index, dataset.emoji_index, emb_dim=emb_dim, word_embeddings=word_weights, emoji_embeddings=emoji_weights).to(gpu)
 elif args.model == 'skipgram':
     print('Not Implemented Yet')
     assert(False)
 
 
 # Setup optimizer
-if emoji_weights == None:
-    max_iter = 500 #For slow start, no point going above this
+if args.emoji2vec:
+    max_iter = 500
 else:
-    max_iter = 1000
+    max_iter = 100
+    #max_iter = 500 #For slow start, no real point going above this
 learn_rate = args.learningrate
 batch_size = 16
 optimizer = torch.optim.SGD(model.parameters(), lr=learn_rate)
