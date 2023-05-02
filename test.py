@@ -70,10 +70,9 @@ if not word_model is None:
 
 # Load Emoji2Vec is neccessary (WIP)
 if args.emoji2vec:   
-    emoji_model = gensim.models.KeyedVectors.load_word2vec_format('./results/emoji2vec.bin')
+    emoji_model = gensim.models.KeyedVectors.load_word2vec_format('./preTrainedEmoji2Vec.txt', binary=False)
 else:
     emoji_model = None
-
 
 emoji_weights = None
 if not emoji_model is None:
