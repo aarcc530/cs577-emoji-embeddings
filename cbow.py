@@ -7,6 +7,7 @@ class CBOW(nn.Module):
 
         self.word_len = word_len
         self.emoji_len = emoji_len
+        self.freeze_pretrain = freeze_pretrained_words
 
 
         # Create/Load Word Emebeddings, zeroing out the 0/period
@@ -16,8 +17,9 @@ class CBOW(nn.Module):
             self.word_embeddings = nn.Embedding(word_len, self.emb_dim)
             self.word_embeddings.weight.data.uniform_(-1, 1)
             with torch.no_grad():
-                self.word_embeddings.weight.data[0] = torch.zeros(self.emb_dim)
-                self.word_embeddings.weight[0] = self.word_embeddings.weight[0].detach()
+                zero = torch.zeros(self.emb_dim)
+                zero.requires_grad = False
+                self.word_embeddings.weight.data[0] = zero
         else:
             self.emb_dim = len(word_embeddings[0])
             self.word_len - len(word_embeddings)
@@ -31,7 +33,6 @@ class CBOW(nn.Module):
         self.emoji_embeddings.weight.data.uniform_(-1, 1)
         with torch.no_grad():
             self.emoji_embeddings.weight.data[0] = torch.zeros(self.emb_dim)
-            self.emoji_embeddings.weight[0] = self.emoji_embeddings.weight[0].detach()
 
         assert(window > 0)
         self.window = window
@@ -46,7 +47,20 @@ class CBOW(nn.Module):
             nn.Softmax(dim=1)
         )
 
+    def reset_zero(self):
+        if (not self.freeze_pretrain):
+            self.word_embeddings.weight.data[0] = torch.zeros(self.emb_dim)
+        with torch.no_grad():
+            self.emoji_embeddings.weight.data[0] = torch.zeros(self.emb_dim)
+
+
     def forward(self, X: torch.Tensor):
+        # BECAUSE IT WONT LET ME DISABLE CHANGING THIS ONE VECTOR for no good reason, we will just do it again and again
+        with torch.no_grad():
+            zero = torch.zeros(self.emb_dim)
+            zero.requires_grad = False
+            zero = zero.detach()
+            self.emoji_embeddings.weight.data[0] = zero
         # This is a mess I came up with on how to word embed all of these across the two since negatives are emoji
         zeroes = torch.zeros_like(X)
         zeroed_out_emojis = torch.where(X < 0, zeroes, X)
