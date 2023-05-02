@@ -64,7 +64,7 @@ elif args.model == 'skipgram':
 
 # Set up the Correct Loaded Embeddings
 word_weights = None
-if not word_weights is None:
+if not word_model is None:
     word_list = []
     for i in range(dataset.dict_index):
         word = dataset.index2word[i]
@@ -95,11 +95,7 @@ elif args.model == 'skipgram':
 
 
 # Setup optimizer
-if args.emoji2vec:
-    max_iter = 500
-else:
-    max_iter = 100
-    #max_iter = 500 #For slow start, no real point going above this
+max_iter = 100
 learn_rate = args.learningrate
 batch_size = 16
 optimizer = torch.optim.SGD(model.parameters(), lr=learn_rate)
@@ -190,12 +186,12 @@ for i in range(1, max_iter + 1):
 output_location = './results/'
 
 (acc_fig, acc_ax) = plt.subplots()
-acc_ax.set(xlabel='Epochs', ylabel='Accuracy', title='Accuracy Over Epochs for ' + args.model)
+acc_ax.set(xlabel='Epochs', ylabel='Accuracy', title='Accuracy Over Epochs for ' + args.model + ' with ' + ('emoji2vec + tuning' if args.emoji2vec else 'random') + 'embeddings')
 acc_ax.plot(accuracies)
 acc_fig.savefig(output_location + 'accuracy-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + '.png')
 
 (loss_fig, loss_ax) = plt.subplots()
-loss_ax.set(xlabel='Epochs', ylabel='Loss', title='Loss Over Epochs for ' + args.model)
+loss_ax.set(xlabel='Epochs', ylabel='Loss', title='Loss Over Epochs for ' + args.model + ' with ' + ('emoji2vec + tuning' if args.emoji2vec else 'random') + 'embeddings')
 loss_ax.plot(losses)
 loss_fig.savefig(output_location + 'loss-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + '.png')
 
