@@ -32,6 +32,8 @@ class CBOWDataset(Dataset):
                 window = post[i-(side_len):i] + post[i+1:i+(side_len)+1]
                 include_window = True
                 contains_emojis = False
+                if post[i] == self.EMOJI_NOT_FOUND:
+                    continue
                 for j in range(2 *side_len):
                     if window[j] == self.EMOJI_NOT_FOUND:
                         include_window = False
@@ -81,10 +83,11 @@ class CBOWDataset(Dataset):
                 if is_emoji:
                     if word not in self.emoji_embeddings:
                         words.append(self.EMOJI_NOT_FOUND)
-                    self.word2index[word] = -self.emoji_index
-                    self.index2word[-self.emoji_index] = word
-                    words.append(-self.emoji_index)
-                    self.emoji_index += 1
+                    else:
+                        self.word2index[word] = -self.emoji_index
+                        self.index2word[-self.emoji_index] = word
+                        words.append(-self.emoji_index)
+                        self.emoji_index += 1
                 else:
                     self.word2index[word] = self.dict_index
                     self.index2word[self.dict_index] = word
