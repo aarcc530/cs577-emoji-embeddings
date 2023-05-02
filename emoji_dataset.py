@@ -72,7 +72,7 @@ class CBOWDataset(Dataset):
                     self.emoji_index += 1
                 else:
                     self.word2index[word] = self.dict_index
-                    words.append(self.dict_index)
+                    self.index2word[self.dict_index] = word
                     self.dict_index += 1
 
             if add_period:
