@@ -18,3 +18,4 @@ embeddings['numbers'] = embeddings.apply(lambda row: [float(x[:-1]) for x in row
 numbers = pd.DataFrame(embeddings['numbers'].tolist(), columns=range(1, 51))
 numbers.insert(0, 'emoji', embeddings.iloc[:, 0])
 numbers.to_csv(f'{args.filename[:-4]}.txt', sep=' ', header=False, index=False)
+with open(f'{args.filename[:-4]}.txt', "r+") as f: s = f.read(); f.seek(0); f.write(f"{len(numbers.index)} 50\n" + s)
