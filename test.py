@@ -64,7 +64,7 @@ elif args.model == 'skipgram':
 
 # Set up the Correct Loaded Embeddings
 word_weights = None
-if not word_weights is None:
+if not word_model is None:
     word_list = []
     for i in range(dataset.dict_index):
         word = dataset.index2word[i]
@@ -80,7 +80,7 @@ if args.emoji2vec:
     for i in range(dataset.emoji_index):
         emoji = dataset.index2word[-i]
         if emoji in emoji_model:
-            emoji_list.append(torch.tensor(word_model[word]))
+            emoji_list.append(torch.tensor(emoji_model[emoji]))
         else:
             emoji_list.append(torch.zeros(emb_dim))
     emoji_weights = torch.stack(emoji_list)
@@ -88,17 +88,14 @@ if args.emoji2vec:
 
 # Setup Model (Skipgram WIP)
 if args.model == 'cbow':
-    model = CBOW(dataset.dict_index, dataset.emoji_index, window=window, emb_dim=emb_dim, word_embeddings=word_weights).to(gpu)
+    model = CBOW(dataset.dict_index, dataset.emoji_index, emb_dim=emb_dim, word_embeddings=word_weights, emoji_embeddings=emoji_weights).to(gpu)
 elif args.model == 'skipgram':
     print('Not Implemented Yet')
     assert(False)
 
 
 # Setup optimizer
-if emoji_weights == None:
-    max_iter = 500 #For slow start, no point going above this
-else:
-    max_iter = 1000
+max_iter = 100
 learn_rate = args.learningrate
 batch_size = 16
 optimizer = torch.optim.SGD(model.parameters(), lr=learn_rate)
@@ -189,12 +186,12 @@ for i in range(1, max_iter + 1):
 output_location = './results/'
 
 (acc_fig, acc_ax) = plt.subplots()
-acc_ax.set(xlabel='Epochs', ylabel='Accuracy', title='Accuracy Over Epochs for ' + args.model)
+acc_ax.set(xlabel='Epochs', ylabel='Accuracy', title='Accuracy Over Epochs for ' + args.model + ' with ' + ('emoji2vec + tuning' if args.emoji2vec else 'random') + 'embeddings')
 acc_ax.plot(accuracies)
 acc_fig.savefig(output_location + 'accuracy-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + '.png')
 
 (loss_fig, loss_ax) = plt.subplots()
-loss_ax.set(xlabel='Epochs', ylabel='Loss', title='Loss Over Epochs for ' + args.model)
+loss_ax.set(xlabel='Epochs', ylabel='Loss', title='Loss Over Epochs for ' + args.model + ' with ' + ('emoji2vec + tuning' if args.emoji2vec else 'random') + 'embeddings')
 loss_ax.plot(losses)
 loss_fig.savefig(output_location + 'loss-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + '.png')
 
