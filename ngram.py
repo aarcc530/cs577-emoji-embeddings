@@ -9,7 +9,7 @@ class NGram(nn.Module):
         self.word_len = word_len
         self.emoji_len = emoji_len
         self.freeze_pretrain = freeze_pretrained_words
-        print(emoji_len)
+        print(word_len, emoji_len, word_len + emoji_len)
 
         # Create/Load Word Emebeddings, zeroing out the 0/period
         if word_embeddings is None:
@@ -58,6 +58,7 @@ class NGram(nn.Module):
             #nn.Linear(self.emb_dim * 4, word_len + emoji_len - 1),
             nn.Linear(self.emb_dim * 4, hidden_size),
             nn.Tanh(),
+            nn.Dropout(p=0.2),
             nn.Linear(hidden_size, word_len + emoji_len - 1),
             # nn.Tanh(),
             nn.LogSoftmax(dim=1)
