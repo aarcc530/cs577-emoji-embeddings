@@ -167,12 +167,12 @@ for i in range(1, max_iter + 1):
 output_location = './results/'
 
 (acc_fig, acc_ax) = plt.subplots()
-acc_ax.set(xlabel='Epochs', ylabel='Accuracy', title='Accuracy Over Epochs for ' + args.model + ' with ' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else ' + tuning') + 'embeddings')
+acc_ax.set(xlabel='Epochs', ylabel='Accuracy', title='Accuracy Over Epochs for ' + args.model + ' with ' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else ' + tuning') + ' embeddings')
 acc_ax.plot(accuracies)
 acc_fig.savefig(output_location + 'accuracy-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + '.png')
 
 (loss_fig, loss_ax) = plt.subplots()
-loss_ax.set(xlabel='Epochs', ylabel='Loss', title='Loss Over Epochs for ' + args.model + ' with ' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else ' + tuning') + 'embeddings')
+loss_ax.set(xlabel='Epochs', ylabel='Loss', title='Loss Over Epochs for ' + args.model + ' with ' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else ' + tuning') + ' embeddings')
 loss_ax.plot(losses)
 loss_fig.savefig(output_location + 'loss-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else '-tuned') + '.png')
 
