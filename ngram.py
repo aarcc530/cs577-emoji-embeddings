@@ -3,7 +3,7 @@ import torch
 
 class NGram(nn.Module):
     def __init__(self, word_len, emoji_len, word_embeddings=None, freeze_pretrained_words=True, emb_dim=50, window=4,
-                 emoji_embeddings=None, hidden_size=12):
+                 emoji_embeddings=None, hidden_size=20):
         super(NGram, self).__init__()
 
         self.word_len = word_len
