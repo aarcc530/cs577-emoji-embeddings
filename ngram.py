@@ -13,6 +13,7 @@ class NGram(nn.Module):
 
         # Create/Load Word Emebeddings, zeroing out the 0/period
         if word_embeddings is None:
+            assert(False)
             assert (emb_dim > 0)
             self.emb_dim = emb_dim
 
@@ -56,7 +57,7 @@ class NGram(nn.Module):
             # nn.Linear(hidden_size * 4, word_len + emoji_len - 1),
             nn.Linear(self.emb_dim * 4, word_len + emoji_len - 1),
             # nn.Tanh(),
-            nn.Softmax(dim=1)
+            nn.LogSoftmax(dim=1)
         )
 
     def forward(self, X: torch.Tensor):

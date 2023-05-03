@@ -67,8 +67,9 @@ elif args.model == 'skipgram':
     #dataset = SkipgramDataset(args.filename, window_size=window, device=gpu)
     assert(False)
 elif args.model == 'ngram':
-    dataset = NGramDataset(args.filename, window_size=window, device=gpu, emoji_windows_only=True, word_embeddings=word_model, emoji_embeddings=emoji_model)
-
+    print('moved')
+    assert(False)
+    
 
 # Set up the Correct Loaded Embeddings
 word_weights = None
@@ -94,12 +95,12 @@ if args.emoji2vec:
     emoji_weights = torch.stack(emoji_list)
 
 
-# Setup Model (Skipgram WIP)
+# Setup Model 
 if args.model == 'cbow':
     model = CBOW(dataset.dict_index, dataset.emoji_index, emb_dim=emb_dim, word_embeddings=word_weights, 
                  emoji_embeddings=emoji_weights, freeze_pretrained_words=(not args.unfreezeWords), freeze_pretrained_emojis=args.freezeEmojis).to(gpu)
-elif args.model == 'skipgram':
-    print('Not Implemented Yet')
+elif args.model == 'ngram':
+    print('Moved files')
     assert(False)
 
 
