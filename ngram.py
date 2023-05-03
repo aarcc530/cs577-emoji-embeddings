@@ -54,7 +54,7 @@ class NGram(nn.Module):
         self.learning_layer = nn.Sequential(
             # nn.Linear(hidden_size, word_len + emoji_len - 1),
             # nn.Linear(hidden_size * 4, word_len + emoji_len - 1),
-            nn.Linear(self.emb_dim, word_len + emoji_len - 1),
+            nn.Linear(self.emb_dim * 4, word_len + emoji_len - 1),
             # nn.Tanh(),
             nn.Softmax(dim=1)
         )
@@ -73,7 +73,7 @@ class NGram(nn.Module):
         # out2 = torch.flatten(out1, start_dim=1)
 
         # Take Mean of input, then stick it through the learning layer
-        out1 = torch.mean(embedded, dim=1)
+        out1 = torch.flatten(embedded, start_dim=1)
         out2 = self.learning_layer(out1)
 
         return out2
