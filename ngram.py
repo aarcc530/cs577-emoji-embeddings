@@ -3,7 +3,7 @@ import torch
 
 class NGram(nn.Module):
     def __init__(self, word_len, emoji_len, word_embeddings=None, freeze_pretrained_words=True, emb_dim=50, window=4,
-                 emoji_embeddings=None, hidden_size=10):
+                 emoji_embeddings=None, hidden_size=12):
         super(NGram, self).__init__()
 
         self.word_len = word_len
@@ -55,7 +55,10 @@ class NGram(nn.Module):
         self.learning_layer = nn.Sequential(
             # nn.Linear(hidden_size, word_len + emoji_len - 1),
             # nn.Linear(hidden_size * 4, word_len + emoji_len - 1),
-            nn.Linear(self.emb_dim * 4, word_len + emoji_len - 1),
+            #nn.Linear(self.emb_dim * 4, word_len + emoji_len - 1),
+            nn.Linear(self.emb_dim * 4, hidden_size),
+            nn.Tanh(),
+            nn.Linear(hidden_size, word_len + emoji_len - 1),
             # nn.Tanh(),
             nn.LogSoftmax(dim=1)
         )
