@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from cbow import CBOW
-from emoji_dataset import CBOWDataset#, SkipgramDataset
+from emoji_dataset import CBOWDataset, NGramDataset #, SkipgramDataset
 import argparse
 import gensim
 import gensim.downloader as api
@@ -15,10 +15,11 @@ parser = argparse.ArgumentParser(
                     epilog='Text at the bottom of help')
 
 parser.add_argument('-f', '--filename', default='./Posts.csv')
-parser.add_argument('-m', '--model', choices=['cbow', 'skipgram'], default='cbow')
+parser.add_argument('-m', '--model', choices=['cbow', 'ngram'], default='cbow')
 parser.add_argument('-w', '--window', type=int, default=4)
 parser.add_argument('-E', '--embeddings', choices=['glove', 'word2vec', 'none'], default='glove')
 parser.add_argument('-e', '--emoji2vec', action='store_true')
+parser.add_argument('-eF', '--emojiFile', default='./preTrainedEmoji2Vec.txt')
 parser.add_argument('-ng', '--nogpu', action='store_true')
 parser.add_argument('-l', '--learningrate', type=int, default=0.1)
 parser.add_argument('-uW', '--unfreezeWords', action='store_true')
@@ -53,7 +54,7 @@ else:
 
 
 # Load Emoji2Vec is neccessary (WIP)
-emoji_model = gensim.models.KeyedVectors.load_word2vec_format('./preTrainedEmoji2Vec.txt', binary=False)
+emoji_model = gensim.models.KeyedVectors.load_word2vec_format(args.emojiFile, binary=False)
 if args.emoji2vec:   
     assert(emb_dim == len(emoji_model.vectors[0]))
 
@@ -65,6 +66,8 @@ if args.model == 'cbow':
 elif args.model == 'skipgram':
     #dataset = SkipgramDataset(args.filename, window_size=window, device=gpu)
     assert(False)
+elif args.model == 'ngram':
+    dataset = NGramDataset(args.filename, window_size=window, device=gpu, emoji_windows_only=True, word_embeddings=word_model, emoji_embeddings=emoji_model)
 
 
 # Set up the Correct Loaded Embeddings
@@ -167,22 +170,23 @@ for i in range(1, max_iter + 1):
 output_location = './results/'
 
 (acc_fig, acc_ax) = plt.subplots()
-acc_ax.set(xlabel='Epochs', ylabel='Accuracy', title='Accuracy Over Epochs for ' + args.model + ' with ' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else ' + tuning') + ' embeddings')
+acc_ax.set(xlabel='Epochs', ylabel='Accuracy', title=args.model + ' Accuracy Over Epochs for ' + args.model + ' with ' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else ' + tuning') + ' embeddings')
 acc_ax.plot(accuracies)
 acc_fig.savefig(output_location + 'accuracy-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + '.png')
 
 (loss_fig, loss_ax) = plt.subplots()
-loss_ax.set(xlabel='Epochs', ylabel='Loss', title='Loss Over Epochs for ' + args.model + ' with ' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else ' + tuning') + ' embeddings')
+loss_ax.set(xlabel='Epochs', ylabel='Loss', title=args.model + ' Loss Over Epochs for ' + args.model + ' with ' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else ' + tuning') + ' embeddings')
 loss_ax.plot(losses)
 loss_fig.savefig(output_location + 'loss-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else '-tuned') + '.png')
 
-pairs = []
-for emoji in range(-dataset.emoji_index + 1, 1):
-    pairs.append((dataset.index2word[emoji], model.get_word_embeddings(torch.tensor(emoji).to(gpu)).tolist()))
+if args.model == 'cbow':
+    pairs = []
+    for emoji in range(-dataset.emoji_index + 1, 1):
+        pairs.append((dataset.index2word[emoji], model.get_word_embeddings(torch.tensor(emoji).to(gpu)).tolist()))
 
 
-results = pd.DataFrame.from_records(pairs, columns=['Emoji', 'Embedding'])
-results.to_csv(output_location + 'emoji-embeddings-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else '-tuned') + '.csv', index=False)
+    results = pd.DataFrame.from_records(pairs, columns=['Emoji', 'Embedding'])
+    results.to_csv(output_location + 'emoji-embeddings-' + args.model + '-' + str(max_iter) + '-iters-' + ('emoji2vec' if args.emoji2vec else 'random') + ('' if args.freezeEmojis else '-tuned') + '.csv', index=False)
 
 
 print("done")

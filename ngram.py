@@ -31,10 +31,22 @@ class NGram(nn.Module):
 
         # Create Emoji Embeddings, zeroing out -1/the period
 
-        self.emoji_embeddings = nn.Embedding.from_pretrained(emoji_embeddings, freeze=True)
-        temp_state2 = self.emoji_embeddings.state_dict()
-        temp_state2['weight'][-1] = torch.zeros(self.emb_dim)
-        self.emoji_embeddings.load_state_dict(temp_state2)
+        # Create/Load Eomji Emebeddings, zeroing out the 0/period
+        if emoji_embeddings is None:
+            self.emoji_embeddings = nn.Embedding(emoji_len, self.emb_dim)
+            self.emoji_embeddings.weight.data.uniform_(-1, 1)
+            with torch.no_grad():
+                self.emoji_embeddings.weight.data[0] = torch.zeros(self.emb_dim)
+                temp = self.emoji_embeddings.weight.data
+                self.emoji_embeddings = nn.Embedding.from_pretrained(temp, freeze=True)
+                self.emoji_embeddings.weight[0] = torch.zeros(self.emb_dim)
+
+        else:
+            assert(self.emb_dim == len(emoji_embeddings[0]))
+            self.emoji_len = len(emoji_embeddings)
+            with torch.no_grad():
+                self.emoji_embeddings = nn.Embedding.from_pretrained(emoji_embeddings, freeze=True)
+                self.emoji_embeddings.weight[0] = torch.zeros(self.emb_dim)
 
         self.window = int(window)
 
